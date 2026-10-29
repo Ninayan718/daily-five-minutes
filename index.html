@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#9A5B2C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="每日5分钟">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="assets/icon-180.png">
+<link rel="icon" type="image/png" href="assets/icon-192.png">
+<title>每日 5 分钟 · 读书与实践</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark"></span>
+      <div>
+        <h1>每日 5 分钟</h1>
+        <p class="brand-sub">读一点，用一次，记一笔</p>
+      </div>
+    </div>
+    <nav class="tabs" id="tabs">
+      <button class="tab is-active" data-view="today">今日</button>
+      <button class="tab" data-view="journal">我的记录</button>
+      <button class="tab" data-view="stats">统计</button>
+      <button class="tab" data-view="library">书摘库</button>
+    </nav>
+  </header>
+
+  <main class="main">
+
+    <section class="view" id="view-today">
+      <div id="today-slot"></div>
+    </section>
+
+    <section class="view is-hidden" id="view-journal">
+      <div class="view-head">
+        <h2>我的实践记录</h2>
+        <p class="view-desc">三段式：场景 / 我怎么做的 / 结果+反思。写完自动归档到对应卡片下。</p>
+      </div>
+      <div id="journal-slot"></div>
+    </section>
+
+    <section class="view is-hidden" id="view-stats">
+      <div class="view-head">
+        <h2>坚持与转化</h2>
+        <p class="view-desc">比「读了多少本」更有意义的是：你真的用上了多少。</p>
+      </div>
+      <div id="stats-slot"></div>
+    </section>
+
+    <section class="view is-hidden" id="view-library">
+      <div class="view-head">
+        <h2>书摘库</h2>
+        <p class="view-desc">内置 <span id="lib-count">0</span> 条 + 你自己添加的条目。可搜索、可按领域筛选、可手动指定今日卡片。</p>
+      </div>
+      <div class="lib-toolbar">
+        <input type="search" id="lib-search" placeholder="搜索书名、作者、关键词…">
+        <select id="lib-field">
+          <option value="">全部领域</option>
+        </select>
+        <select id="lib-era">
+          <option value="">全部年代</option>
+          <option value="classic">经典名著</option>
+          <option value="modern">近年新书</option>
+          <option value="custom">我自己添加的</option>
+        </select>
+        <button class="btn btn-primary" id="btn-add-card">+ 添加书摘</button>
+      </div>
+      <div id="library-slot"></div>
+    </section>
+
+  </main>
+
+  <footer class="foot">
+    <span>数据保存在本机浏览器</span>
+    <span class="dot">·</span>
+    <button class="linkish" id="btn-export-md">导出 Markdown</button>
+    <span class="dot">·</span>
+    <button class="linkish" id="btn-export-json">备份 JSON</button>
+    <span class="dot">·</span>
+    <button class="linkish" id="btn-import-json">导入恢复</button>
+    <input type="file" id="file-import" accept="application/json" hidden>
+  </footer>
+
+</div>
+
+<div class="modal is-hidden" id="modal">
+  <div class="modal-back" data-close="1"></div>
+  <div class="modal-panel">
+    <div class="modal-head">
+      <h3 id="modal-title">标题</h3>
+      <button class="modal-x" data-close="1">×</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<script src="data/cards.js"></script>
+<script src="assets/app.js"></script>
+<script>
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  });
+}
+</script>
+</body>
+</html>
