@@ -1,4 +1,4 @@
-var CACHE = 'read5-v1.0.1';
+var CACHE = 'read5-v1.0.2';
 var ASSETS = [
   './',
   './index.html',

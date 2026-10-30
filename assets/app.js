@@ -174,6 +174,7 @@
 
     h += '<div class="row-actions">';
     h += '<button class="btn btn-primary" id="btn-record">记一笔用法</button>';
+    h += '<button class="btn" id="btn-share-card">生成分享图</button>';
     h += '<button class="btn btn-ghost" id="btn-swap">换一条</button>';
     h += '</div>';
     if (rec.length) h += '<div style="margin-top:12px"><span class="remember">今天已记录 ' + rec.length + ' 条实践</span></div>';
@@ -188,6 +189,7 @@
         if (el) el.focus();
       }, 60);
     };
+    document.getElementById('btn-share-card').onclick = function () { openShareCard(card); };
     document.getElementById('btn-swap').onclick = function () {
       var cur = state.assign[todayStr()];
       if (!state.swaps[todayStr()]) state.swaps[todayStr()] = [];
@@ -536,6 +538,200 @@
       libEra = 'custom';
       document.getElementById('lib-era').value = 'custom';
       renderLibrary();
+    };
+  }
+
+  /* ---------- 今日分享图 ---------- */
+
+  function pathRoundRect(ctx, x, y, w, h, r) {
+    var radius = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.arcTo(x + w, y, x + w, y + h, radius);
+    ctx.arcTo(x + w, y + h, x, y + h, radius);
+    ctx.arcTo(x, y + h, x, y, radius);
+    ctx.arcTo(x, y, x + w, y, radius);
+    ctx.closePath();
+  }
+
+  function shareText(ctx, text, x, y, maxWidth, lineHeight, maxLines, font, color) {
+    ctx.font = font;
+    ctx.fillStyle = color;
+    var source = String(text || '').replace(/\s+/g, ' ').trim();
+    if (!source) return y;
+    var lines = [], line = '';
+    Array.from(source).forEach(function (ch) {
+      var test = line + ch;
+      if (line && ctx.measureText(test).width > maxWidth) {
+        lines.push(line);
+        line = ch;
+      } else line = test;
+    });
+    if (line) lines.push(line);
+    var shown = lines.slice(0, maxLines);
+    if (lines.length > maxLines && shown.length) {
+      var last = shown[shown.length - 1];
+      while (last && ctx.measureText(last + '…').width > maxWidth) last = last.slice(0, -1);
+      shown[shown.length - 1] = last + '…';
+    }
+    shown.forEach(function (s, i) { ctx.fillText(s, x, y + i * lineHeight); });
+    return y + shown.length * lineHeight;
+  }
+
+  function shareDivider(ctx, y) {
+    ctx.strokeStyle = '#EAE4D9';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(92, y);
+    ctx.lineTo(988, y);
+    ctx.stroke();
+  }
+
+  function buildShareCanvas(card, includePractice) {
+    var canvas = document.createElement('canvas');
+    canvas.width = 1080;
+    canvas.height = 1440;
+    var ctx = canvas.getContext('2d');
+    var ink = '#292820', muted = '#777367', accent = '#9A5B2C';
+
+    ctx.fillStyle = '#F2EEE5';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#E9DFD1';
+    ctx.beginPath(); ctx.arc(1000, 90, 190, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#E6EBE2';
+    ctx.beginPath(); ctx.arc(80, 1370, 175, 0, Math.PI * 2); ctx.fill();
+    pathRoundRect(ctx, 34, 34, 1012, 1372, 36);
+    ctx.fillStyle = '#FFFEFB'; ctx.fill();
+
+    ctx.fillStyle = accent;
+    pathRoundRect(ctx, 88, 82, 48, 48, 14); ctx.fill();
+    ctx.fillStyle = '#FFFFFF'; ctx.font = '700 28px -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('读', 112, 106); ctx.textAlign = 'left';
+    ctx.fillStyle = ink; ctx.font = '700 34px -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif';
+    ctx.fillText('每日 5 分钟', 154, 92);
+    ctx.fillStyle = muted; ctx.font = '24px -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif';
+    ctx.fillText('读一点 · 用一次 · 记一笔', 154, 137);
+
+    var date = todayStr();
+    ctx.fillStyle = '#F4E8DC'; pathRoundRect(ctx, 88, 188, 185, 50, 24); ctx.fill();
+    ctx.fillStyle = accent; ctx.font = '600 23px -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif';
+    ctx.textBaseline = 'middle'; ctx.fillText(card.field || '今日阅读', 112, 213);
+    ctx.fillStyle = muted; ctx.font = '24px -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif';
+    ctx.textAlign = 'right'; ctx.fillText(date, 990, 213); ctx.textAlign = 'left';
+
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = muted; ctx.font = '600 22px -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif';
+    ctx.fillText('TODAY’S READING', 92, 302);
+    var quoteEnd = shareText(ctx, '“' + (card.excerpt || '') + '”', 92, 356, 896, 61, 4,
+      '500 43px -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif', ink);
+    ctx.fillStyle = muted; ctx.font = '26px -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif';
+    shareText(ctx, '《' + (card.book || '') + '》 · ' + (card.author || '作者未标注'), 92, Math.max(quoteEnd + 12, 610), 896, 36, 1,
+      '26px -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif', muted);
+
+    shareDivider(ctx, 660);
+    ctx.fillStyle = accent; ctx.font = '700 24px -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif';
+    ctx.fillText('我读到的', 92, 714);
+    shareText(ctx, card.core || card.excerpt || '', 92, 765, 896, 48, 2,
+      '600 34px -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif', ink);
+
+    shareDivider(ctx, 880);
+    ctx.fillStyle = accent; ctx.font = '700 24px -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif';
+    var records = state.records.filter(function (r) { return r.date === date && r.cardId === card.id; });
+    var record = records.length ? records[records.length - 1] : null;
+    if (record && includePractice) {
+      ctx.fillText('我的实践', 92, 934);
+      if (record.scene) {
+        ctx.fillStyle = muted; ctx.font = '600 20px -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif'; ctx.fillText('场景', 92, 976);
+        shareText(ctx, record.scene, 172, 976, 810, 34, 1, '24px -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif', ink);
+      }
+      if (record.did) {
+        ctx.fillStyle = muted; ctx.font = '600 20px -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif'; ctx.fillText('做法', 92, 1022);
+        shareText(ctx, record.did, 172, 1022, 810, 34, 2, '24px -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif', ink);
+      }
+      if (record.result) {
+        ctx.fillStyle = muted; ctx.font = '600 20px -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif'; ctx.fillText('回顾', 92, 1096);
+        shareText(ctx, record.result, 172, 1096, 810, 34, 2, '24px -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif', ink);
+      }
+    } else {
+      ctx.fillText('今天可以这样用', 92, 934);
+      var work = card.work && card.work.length ? card.work[0] : null;
+      var life = card.life && card.life.length ? card.life[0] : '';
+      var practiceY = 980;
+      if (work) {
+        ctx.fillStyle = muted; ctx.font = '600 20px -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif'; ctx.fillText('工作', 92, practiceY);
+        practiceY = shareText(ctx, work.a || '', 172, practiceY, 810, 34, 2, '24px -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif', ink) + 8;
+      }
+      if (life) {
+        ctx.fillStyle = muted; ctx.font = '600 20px -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif'; ctx.fillText('生活', 92, practiceY);
+        shareText(ctx, life, 172, practiceY, 810, 34, 2, '24px -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif', ink);
+      }
+    }
+
+    var microY = record && includePractice ? 1200 : 1190;
+    pathRoundRect(ctx, 82, microY, 916, 128, 20); ctx.fillStyle = '#F4E8DC'; ctx.fill();
+    ctx.fillStyle = accent; ctx.font = '700 21px -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif';
+    ctx.fillText('今日微行动', 112, microY + 38);
+    shareText(ctx, card.micro && card.micro.do || '把今天读到的观点用一次。', 112, microY + 76, 850, 32, 2,
+      '25px -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif', ink);
+
+    ctx.fillStyle = muted; ctx.font = '22px -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif';
+    ctx.textAlign = 'center'; ctx.fillText('把读到的，变成自己的方法', 540, 1368); ctx.textAlign = 'left';
+    return canvas;
+  }
+
+  function openShareCard(card) {
+    var date = todayStr();
+    var records = state.records.filter(function (r) { return r.date === date && r.cardId === card.id; });
+    var includePractice = records.length > 0;
+    var h = '<p class="share-note">竖版 3:4 图片，适合保存后发布到小红书。图片在本机生成，不会上传你的记录。</p>';
+    if (records.length) h += '<label class="share-check"><input type="checkbox" id="share-include-practice" checked> 图片包含我今天写下的实践和回顾</label>';
+    h += '<img class="share-preview" id="share-preview" alt="今日读书实践分享图预览">';
+    h += '<div class="row-actions share-actions"><button class="btn btn-primary" id="btn-share-file">分享图片</button><button class="btn" id="btn-save-image">保存图片</button><button class="btn btn-ghost" id="btn-copy-caption">复制配文</button></div>';
+    h += '<p class="share-note">若系统分享菜单里没有小红书，先保存图片，再到小红书发布笔记。</p>';
+    showModal('今日读书实践分享图', h);
+    var canvas = buildShareCanvas(card, includePractice);
+    document.getElementById('share-preview').src = canvas.toDataURL('image/png');
+    var toggle = document.getElementById('share-include-practice');
+    if (toggle) toggle.onchange = function () {
+      includePractice = toggle.checked;
+      canvas = buildShareCanvas(card, includePractice);
+      document.getElementById('share-preview').src = canvas.toDataURL('image/png');
+    };
+    function pngBlob(done) { canvas.toBlob(done, 'image/png'); }
+    function filename() { return '每日5分钟-' + date + '.png'; }
+    function saveBlob(blob) {
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a'); a.href = url; a.download = filename();
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+    }
+    document.getElementById('btn-save-image').onclick = function () { pngBlob(saveBlob); };
+    document.getElementById('btn-share-file').onclick = function () {
+      pngBlob(function (blob) {
+        var file = new File([blob], filename(), { type: 'image/png' });
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          navigator.share({ title: '每日读书实践', files: [file] }).catch(function () {});
+        } else saveBlob(blob);
+      });
+    };
+    document.getElementById('btn-copy-caption').onclick = function () {
+      var rec = includePractice && records.length ? records[records.length - 1] : null;
+      var caption = '今日读书｜《' + card.book + '》\n' + (card.core || card.excerpt) +
+        (rec && rec.did ? '\n\n我的实践：' + rec.did : '') +
+        (rec && rec.result ? '\n我的回顾：' + rec.result : '') +
+        '\n\n#每日5分钟 #读书分享 #读书笔记';
+      function fallbackCopy() {
+        var field = document.createElement('textarea');
+        field.value = caption; field.style.position = 'fixed'; field.style.opacity = '0';
+        document.body.appendChild(field); field.select();
+        var copied = false;
+        try { copied = document.execCommand('copy'); } catch (e) {}
+        document.body.removeChild(field);
+        alert(copied ? '配文已复制，可以粘贴到小红书。' : caption);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(caption).then(function () { alert('配文已复制，可以粘贴到小红书。'); }).catch(fallbackCopy);
+      } else fallbackCopy();
     };
   }
 
